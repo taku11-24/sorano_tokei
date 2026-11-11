@@ -2,7 +2,9 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>シフト管理アプリ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -10,6 +12,9 @@
         ::-webkit-scrollbar { display: none; }
         body { -ms-overflow-style: none; scrollbar-width: none; -webkit-tap-highlight-color: transparent; }
         
+        /* PWA・スマホ下部ナビゲーション対応 */
+        .pb-safe { padding-bottom: max(env(safe-area-inset-bottom), 16px); }
+
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
@@ -38,7 +43,7 @@
         .digit-box.active { border-color: #f97316; box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.2); background-color: #fffaf0; }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans h-screen flex flex-col overflow-hidden selection:bg-indigo-200">
+<body class="bg-gray-50 text-gray-800 font-sans h-[100dvh] flex flex-col overflow-hidden selection:bg-indigo-200">
 
     <!-- ==================== 共通ヘッダー ==================== -->
     <header class="bg-white/90 backdrop-blur-md text-gray-800 shadow-sm z-20 flex-shrink-0 border-b border-gray-100 transition-all">
@@ -78,7 +83,6 @@
                 </div>
             </div>
 
-            <!-- 【移動】画像アップロードセクション -->
             <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="font-bold text-gray-700 flex items-center gap-2">
@@ -152,11 +156,11 @@
     </div>
 
     <!-- カレンダー用 FAB -->
-    <button id="fab-add" onclick="openShiftFormForDate(getTodayStr())" class="fixed bottom-20 right-5 bg-indigo-600 text-white rounded-2xl w-14 h-14 shadow-[0_4px_20px_rgba(79,70,229,0.4)] flex items-center justify-center text-3xl font-light active:bg-indigo-700 hover:scale-105 transition-transform z-10 hidden">
+    <button id="fab-add" onclick="openShiftFormForDate(getTodayStr())" class="fixed bottom-24 right-5 bg-indigo-600 text-white rounded-2xl w-14 h-14 shadow-[0_4px_20px_rgba(79,70,229,0.4)] flex items-center justify-center text-3xl font-light active:bg-indigo-700 hover:scale-105 transition-transform z-10 hidden">
         +
     </button>
 
-    <!-- ボトムナビゲーション -->
+    <!-- ボトムナビゲーション (pb-safe適用でスマホ対応) -->
     <nav class="bg-white/90 backdrop-blur-lg border-t border-gray-100 flex justify-around items-center h-[68px] shrink-0 pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.02)] z-30">
         <button class="nav-btn flex flex-col items-center justify-center w-full h-full text-indigo-600 transition-colors" data-target="view-home" onclick="switchView('view-home')">
             <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
@@ -265,7 +269,7 @@
                     </button>
                 </div>
 
-                <!-- 【強化】プリセット入力セクション (検索・ソート・フィルタ付き) -->
+                <!-- プリセット入力セクション (検索・ソート・フィルタ付き) -->
                 <div id="quick-input-section" class="mb-6 bg-gray-50 rounded-2xl p-4 border border-gray-200">
                     <div class="flex items-center justify-between mb-3">
                         <label class="block text-xs font-bold text-gray-600">よく使うシフトから入力</label>
@@ -298,13 +302,19 @@
 
                 <div class="flex items-center gap-4 mb-4" id="manual-divider">
                     <div class="h-px bg-gray-200 flex-1"></div>
-                    <span class="text-xs font-bold text-gray-400">または手動で時刻を選ぶ</span>
+                    <span class="text-xs font-bold text-gray-400">時刻を選ぶ</span>
                     <div class="h-px bg-gray-200 flex-1"></div>
                 </div>
 
                 <form id="shift-form" class="space-y-4">
                     <input type="hidden" id="shift-id">
                     
+                    <!-- カレンダー表示色変更UI -->
+                    <div class="flex justify-end items-center gap-3 mb-2 px-1">
+                        <label class="block text-xs font-bold text-gray-500">カレンダー表示色</label>
+                        <input type="color" id="shift-color" class="w-8 h-8 border-0 rounded cursor-pointer bg-transparent" value="#6366f1">
+                    </div>
+
                     <!-- テンキー起動カード (シフト用) -->
                     <div class="mb-6">
                         <div class="flex gap-3 mb-2">
@@ -364,7 +374,7 @@
 
                     <div class="pt-2 flex gap-3">
                         <button type="button" id="btn-delete" class="hidden px-4 py-3.5 bg-red-50 text-red-600 border border-red-100 font-bold rounded-xl text-sm active:bg-red-100">削除</button>
-                        <button type="submit" id="btn-submit" class="flex-1 bg-indigo-600 text-white font-bold py-3.5 rounded-xl text-sm shadow-lg shadow-indigo-600/30 active:bg-indigo-700 transition">手動入力で保存</button>
+                        <button type="submit" id="btn-submit" class="flex-1 bg-indigo-600 text-white font-bold py-3.5 rounded-xl text-sm shadow-lg shadow-indigo-600/30 active:bg-indigo-700 transition">保存する</button>
                     </div>
                 </form>
             </div>
@@ -972,7 +982,7 @@
             // 4. 描画
             if (filtered.length > 0) {
                 formContainer.innerHTML = filtered.map(p => `
-                    <button type="button" onclick="applyPresetAndSave(${p.id})" 
+                    <button type="button" onclick="applyPresetToForm(${p.id})" 
                             class="shrink-0 w-32 border bg-white font-bold py-3 px-2 rounded-xl text-sm active:scale-95 transition-transform shadow-sm flex flex-col items-center justify-center gap-1.5 snap-start"
                             style="border-color: ${p.color}40; border-bottom-width: 3px; border-bottom-color: ${p.color};">
                         <span class="text-gray-700 truncate w-full text-center">${p.name}</span>
@@ -1010,7 +1020,21 @@
             } else {
                 document.getElementById('preset-id').value = '';
                 document.getElementById('preset-name').value = '';
-                document.getElementById('preset-color').value = '#4f46e5';
+                
+                // 重複しない初期カラーをローテーション設定
+                const defaultColors = ['#ef4444', '#f97316', '#f59e0b', '#10b981', '#3b82f6', '#4f46e5', '#8b5cf6', '#ec4899'];
+                const usedColors = presets.map(p => p.color);
+                const availableColors = defaultColors.filter(c => !usedColors.includes(c));
+                
+                let initialColor = '#4f46e5';
+                if (availableColors.length > 0) {
+                    // まだ使われていない色からランダムに選択
+                    initialColor = availableColors[Math.floor(Math.random() * availableColors.length)];
+                } else {
+                    // 全て使われている場合は全色からランダム
+                    initialColor = defaultColors[Math.floor(Math.random() * defaultColors.length)];
+                }
+                document.getElementById('preset-color').value = initialColor;
                 
                 pickerState.preset.start = '09:00';
                 pickerState.preset.end = '18:00';
@@ -1083,7 +1107,14 @@
         function openShiftForm(id = null, event = null) {
             if (event) event.stopPropagation();
             const sheet = document.getElementById('sheet-shift');
+            
+            // フォームリセット
             document.getElementById('shift-form').reset();
+            
+            // === 必須属性のリセット（編集時の保存エラー解消） ===
+            document.getElementById('repeat-type').value = 'none';
+            document.getElementById('repeat-end-container').classList.add('hidden');
+            document.getElementById('repeat-end-date').removeAttribute('required');
             
             document.getElementById('shift-options-container').classList.add('hidden');
             document.getElementById('shift-opt-icon').textContent = '▶';
@@ -1109,6 +1140,9 @@
                 pickerState.shift.restStart = s.restStart ? s.restStart.split('T')[1].substring(0,5) : '';
                 pickerState.shift.restEnd = s.restEnd ? s.restEnd.split('T')[1].substring(0,5) : '';
                 
+                // 編集時は登録されている色をセット
+                document.getElementById('shift-color').value = s.color || '#6366f1';
+                
                 document.getElementById('quick-input-section').classList.add('hidden'); 
                 document.getElementById('manual-divider').classList.add('hidden');
                 document.getElementById('repeat-section').classList.add('hidden'); 
@@ -1128,13 +1162,14 @@
                 document.getElementById('shift-id').value = '';
                 
                 pickerState.shift = { start: '09:00', end: '18:00', restStart: '', restEnd: '' };
+                document.getElementById('shift-color').value = '#6366f1';
 
                 document.getElementById('quick-input-section').classList.remove('hidden');
                 document.getElementById('manual-divider').classList.remove('hidden');
                 document.getElementById('repeat-section').classList.remove('hidden');
                 
                 document.getElementById('btn-delete').classList.add('hidden');
-                document.getElementById('btn-submit').textContent = "手動入力で保存";
+                document.getElementById('btn-submit').textContent = "保存する";
             }
             
             updateDurationAndDisplay('shift');
@@ -1169,7 +1204,7 @@
             const file = event.target.files[0];
             if (!file) return;
 
-            alert("アップロードされた画像を解析し、1ヶ月分のシフトを登録しました！\n（※現在はデモ用のモック動作です）");
+            alert("アップロードされた画像を解析し、1ヶ月分のシフトを登録しました！\n（※現在はデモ用のモック動作です。実際にはAIがシフトの種類を推測し、既存のプリセットの色を割り当てたり、新規のカラーで自動分類して登録されます）");
             
             if (!isPremium) {
                 bulkInputUsageCount++;
@@ -1178,32 +1213,27 @@
             event.target.value = '';
         }
 
-        // --- ワンタップ入力 ---
-        function applyPresetAndSave(presetId) {
+        // --- プリセットからのフォーム入力反映 (Cパターン動作) ---
+        function applyPresetToForm(presetId) {
             const p = presets.find(x => x.id === presetId);
             if (!p) return;
             
-            const baseDate = selectedBaseDate || getTodayStr();
-            const startStr = createDateTime(baseDate, p.start);
-            const endStr = createDateTime(baseDate, p.end, p.start);
-            const restStartStr = createDateTime(baseDate, p.restStart, p.start);
-            const restEndStr = createDateTime(baseDate, p.restEnd, p.start);
+            // プリセット内容を手動入力状態にコピー
+            pickerState.shift.start = p.start || '09:00';
+            pickerState.shift.end = p.end || '18:00';
+            pickerState.shift.restStart = p.restStart || '';
+            pickerState.shift.restEnd = p.restEnd || '';
+            
+            // カラーもコピー
+            document.getElementById('shift-color').value = p.color || '#6366f1';
+            
+            updateDurationAndDisplay('shift');
 
-            if (isOverlapping(startStr, endStr)) return alert("指定された時間は他のシフトと重複しています。");
-
-            shifts.push({
-                id: Date.now().toString(),
-                presetId: p.id,
-                color: p.color,
-                start: startStr,
-                end: endStr,
-                restStart: restStartStr,
-                restEnd: restEndStr
-            });
-
-            renderCalendar();
-            updateHomeView();
-            closeShiftForm();
+            // 休憩が設定されている場合はオプション枠を展開
+            if (p.restStart || p.restEnd) {
+                document.getElementById('shift-options-container').classList.remove('hidden');
+                document.getElementById('shift-opt-icon').textContent = '▼';
+            }
         }
 
         // ==========================================
@@ -1244,7 +1274,7 @@
                 const base = { 
                     start: sStr, 
                     end: eStr, 
-                    color: '#6366f1', 
+                    color: document.getElementById('shift-color').value, 
                     restStart: createDateTime(baseDate, pickerState.shift.restStart, pickerState.shift.start), 
                     restEnd: createDateTime(baseDate, pickerState.shift.restEnd, pickerState.shift.start) 
                 };
@@ -1252,7 +1282,6 @@
                 if (id) {
                     if (isOverlapping(sStr, eStr, id)) return alert("指定された時間は他のシフトと重複しています。");
                     const idx = shifts.findIndex(s => s.id === id);
-                    base.color = shifts[idx].color; // 編集時は色を保持
                     shifts[idx] = { ...shifts[idx], ...base };
                 } else {
                     const rType = document.getElementById('repeat-type').value;
