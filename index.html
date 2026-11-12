@@ -8,34 +8,33 @@
     <title>シフト管理アプリ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* スクロールバー非表示・システムUI最適化 */
         ::-webkit-scrollbar { display: none; }
         body { -ms-overflow-style: none; scrollbar-width: none; -webkit-tap-highlight-color: transparent; }
-        
+
         /* PWA・スマホ下部ナビゲーション対応 */
         .pb-safe { padding-bottom: max(env(safe-area-inset-bottom), 16px); }
 
         .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            grid-auto-rows: minmax(90px, 1fr);
-            border-left: 1px solid #f3f4f6;
-            border-top: 1px solid #f3f4f6;
+                    display: grid;
+                    grid-template-columns: repeat(7, 1fr);
+                    grid-auto-rows: minmax(90px, 1fr);
+                    border-left: 1px solid #f3f4f6;
+                    border-top: 1px solid #f3f4f6;
         }
         .calendar-cell {
-            background-color: #ffffff;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            border-right: 1px solid #f3f4f6;
-            border-bottom: 1px solid #f3f4f6;
+                    background-color: #ffffff;
+                    display: flex;
+                    flex-direction: column;
+                    overflow: hidden;
+                    border-right: 1px solid #f3f4f6;
+                    border-bottom: 1px solid #f3f4f6;
         }
-        
+
         input[type="time"]::-webkit-calendar-picker-indicator,
         input[type="datetime-local"]::-webkit-calendar-picker-indicator,
         input[type="date"]::-webkit-calendar-picker-indicator {
-            cursor: pointer;
-            opacity: 0.6;
+                    cursor: pointer;
+                    opacity: 0.6;
         }
 
         /* テンキー用フォーカスアニメーション */
@@ -160,7 +159,7 @@
         +
     </button>
 
-    <!-- ボトムナビゲーション (pb-safe適用でスマホ対応) -->
+    <!-- ボトムナビゲーション -->
     <nav class="bg-white/90 backdrop-blur-lg border-t border-gray-100 flex justify-around items-center h-[68px] shrink-0 pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.02)] z-30">
         <button class="nav-btn flex flex-col items-center justify-center w-full h-full text-indigo-600 transition-colors" data-target="view-home" onclick="switchView('view-home')">
             <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
@@ -175,6 +174,22 @@
             <span class="text-[10px] font-bold">プリセット</span>
         </button>
     </nav>
+    
+    <!-- ==================== 日次詳細ポップアップ ==================== -->
+    <div id="modal-day-popup" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-30 hidden flex items-center justify-center p-6 transition-opacity duration-200 opacity-0" onclick="closeDayPopup()">
+        <div class="bg-white rounded-3xl w-full max-w-sm max-h-[80vh] flex flex-col shadow-2xl overflow-hidden transform scale-95 transition-transform duration-200" id="day-popup-panel" onclick="event.stopPropagation()">
+            <div class="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50 shrink-0">
+                <h3 id="day-popup-title" class="font-bold text-gray-800 text-lg"></h3>
+                <button onclick="closeDayPopup()" class="w-8 h-8 bg-gray-200 text-gray-600 rounded-full flex items-center justify-center font-bold active:bg-gray-300 transition-colors">✕</button>
+            </div>
+            <div class="p-5 overflow-y-auto flex-1 space-y-3" id="day-popup-list">
+                <!-- JSでシフト一覧を生成 -->
+            </div>
+            <div class="p-5 border-t border-gray-100 shrink-0 bg-white">
+                <button onclick="openShiftFormFromPopup()" class="w-full py-3.5 bg-indigo-50 text-indigo-600 border border-indigo-200 font-bold rounded-xl shadow-sm active:bg-indigo-100 transition">＋ 新規シフトを追加</button>
+            </div>
+        </div>
+    </div>
 
     <!-- ==================== プリセット作成モーダル ==================== -->
     <div id="modal-preset" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 transition-opacity">
@@ -372,57 +387,62 @@
                         </div>
                     </div>
 
-                    <div class="pt-2 flex gap-3">
-                        <button type="button" id="btn-delete" class="hidden px-4 py-3.5 bg-red-50 text-red-600 border border-red-100 font-bold rounded-xl text-sm active:bg-red-100">削除</button>
-                        <button type="submit" id="btn-submit" class="flex-1 bg-indigo-600 text-white font-bold py-3.5 rounded-xl text-sm shadow-lg shadow-indigo-600/30 active:bg-indigo-700 transition">保存する</button>
+                    <!-- キャンセルボタンを下部に追加 -->
+                    <div class="pt-2 flex flex-col gap-3">
+                        <div class="flex gap-3">
+                            <button type="button" id="btn-delete" class="hidden px-4 py-3.5 bg-red-50 text-red-600 border border-red-100 font-bold rounded-xl text-sm active:bg-red-100">削除</button>
+                            <button type="submit" id="btn-submit" class="flex-1 bg-indigo-600 text-white font-bold py-3.5 rounded-xl text-sm shadow-lg shadow-indigo-600/30 active:bg-indigo-700 transition">保存する</button>
+                        </div>
+                        <button type="button" onclick="closeShiftForm()" class="w-full py-3.5 bg-gray-100 text-gray-600 font-bold rounded-xl text-sm active:bg-gray-200 transition">キャンセル</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- ==================== テンキー入力モーダル ==================== -->
-    <div id="modal-numpad" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[60] hidden flex-col justify-end transition-opacity duration-200 opacity-0">
-        <div class="bg-white rounded-t-3xl p-5 pb-8 shadow-2xl transform translate-y-full transition-transform duration-300" id="numpad-panel">
-            <div class="flex justify-between items-center mb-6">
-                <span class="font-bold text-gray-700 text-lg" id="numpad-title">時刻設定</span>
-                <button onclick="closeNumpad()" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center font-bold text-gray-500 active:bg-gray-200">✕</button>
+    <!-- ==================== テンキー入力モーダル (UI刷新版) ==================== -->
+<div id="modal-numpad" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[60] hidden flex-col items-center justify-center p-4 transition-opacity duration-200 opacity-0">
+        <div class="bg-indigo-50/50 rounded-xl shadow-2xl w-full max-w-[320px] overflow-hidden transform scale-95 transition-transform duration-200 border border-indigo-100/50" id="numpad-panel">
+            <!-- ヘッダー -->
+            <div class="bg-indigo-600 text-white px-4 py-3 text-sm font-bold tracking-wide flex justify-between items-center shadow-sm">
+                <span id="numpad-title">時間設定</span>
             </div>
-
+            
             <!-- 時間ディスプレイ -->
-            <div class="flex justify-center items-center text-4xl font-mono mb-8 gap-2">
-                <div class="w-14 h-16 border-2 border-gray-200 rounded-xl bg-gray-50 flex items-center justify-center text-gray-800 digit-box" id="numpad-d0">-</div>
-                <div class="w-14 h-16 border-2 border-gray-200 rounded-xl bg-gray-50 flex items-center justify-center text-gray-800 digit-box" id="numpad-d1">-</div>
-                <span class="text-gray-400 font-bold -mt-1">:</span>
-                <div class="w-14 h-16 border-2 border-gray-200 rounded-xl bg-gray-50 flex items-center justify-center text-gray-800 digit-box" id="numpad-d2">-</div>
-                <div class="w-14 h-16 border-2 border-gray-200 rounded-xl bg-gray-50 flex items-center justify-center text-gray-800 digit-box" id="numpad-d3">-</div>
+            <div class="bg-white px-4 py-5 border-b border-indigo-100 flex justify-center items-center gap-1.5 relative z-10">
+                <span class="text-indigo-900 text-sm font-bold mr-1">時間</span>
+                <div class="w-10 h-12 border-2 rounded-lg flex items-center justify-center text-2xl cursor-pointer bg-white text-gray-800 shadow-sm transition-colors" id="numpad-d0" onclick="setNumpadCursor(0)">-</div>
+                <div class="w-10 h-12 border-2 rounded-lg flex items-center justify-center text-2xl cursor-pointer bg-white text-gray-800 shadow-sm transition-colors" id="numpad-d1" onclick="setNumpadCursor(1)">-</div>
+                <span class="text-indigo-900 font-bold text-xl px-0.5 pb-1">:</span>
+                <div class="w-10 h-12 border-2 rounded-lg flex items-center justify-center text-2xl cursor-pointer bg-white text-gray-800 shadow-sm transition-colors" id="numpad-d2" onclick="setNumpadCursor(2)">-</div>
+                <div class="w-10 h-12 border-2 rounded-lg flex items-center justify-center text-2xl cursor-pointer bg-white text-gray-800 shadow-sm transition-colors" id="numpad-d3" onclick="setNumpadCursor(3)">-</div>
             </div>
 
             <!-- テンキーパッド -->
-            <div class="grid grid-cols-3 gap-3 mb-6">
-                <button onclick="inputDigit('1')" class="py-4 bg-white border border-gray-200 rounded-2xl shadow-sm text-2xl font-semibold active:bg-indigo-50 active:border-indigo-200 transition-colors">1</button>
-                <button onclick="inputDigit('2')" class="py-4 bg-white border border-gray-200 rounded-2xl shadow-sm text-2xl font-semibold active:bg-indigo-50 active:border-indigo-200 transition-colors">2</button>
-                <button onclick="inputDigit('3')" class="py-4 bg-white border border-gray-200 rounded-2xl shadow-sm text-2xl font-semibold active:bg-indigo-50 active:border-indigo-200 transition-colors">3</button>
-                
-                <button onclick="inputDigit('4')" class="py-4 bg-white border border-gray-200 rounded-2xl shadow-sm text-2xl font-semibold active:bg-indigo-50 active:border-indigo-200 transition-colors">4</button>
-                <button onclick="inputDigit('5')" class="py-4 bg-white border border-gray-200 rounded-2xl shadow-sm text-2xl font-semibold active:bg-indigo-50 active:border-indigo-200 transition-colors">5</button>
-                <button onclick="inputDigit('6')" class="py-4 bg-white border border-gray-200 rounded-2xl shadow-sm text-2xl font-semibold active:bg-indigo-50 active:border-indigo-200 transition-colors">6</button>
-                
-                <button onclick="inputDigit('7')" class="py-4 bg-white border border-gray-200 rounded-2xl shadow-sm text-2xl font-semibold active:bg-indigo-50 active:border-indigo-200 transition-colors">7</button>
-                <button onclick="inputDigit('8')" class="py-4 bg-white border border-gray-200 rounded-2xl shadow-sm text-2xl font-semibold active:bg-indigo-50 active:border-indigo-200 transition-colors">8</button>
-                <button onclick="inputDigit('9')" class="py-4 bg-white border border-gray-200 rounded-2xl shadow-sm text-2xl font-semibold active:bg-indigo-50 active:border-indigo-200 transition-colors">9</button>
-                
-                <button onclick="inputNow()" class="py-4 bg-gray-100 border border-gray-200 rounded-2xl shadow-sm text-sm font-bold text-gray-600 active:bg-gray-200 transition-colors">NOW</button>
-                <button onclick="inputDigit('0')" class="py-4 bg-white border border-gray-200 rounded-2xl shadow-sm text-2xl font-semibold active:bg-indigo-50 active:border-indigo-200 transition-colors">0</button>
-                <button onclick="deleteDigit()" class="py-4 bg-gray-100 border border-gray-200 rounded-2xl shadow-sm flex items-center justify-center active:bg-gray-200 transition-colors">
-                    <svg class="w-7 h-7 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2M3 12l6.414 6.414a2 2 0 001.414.586H19a2 2 0 002-2V7a2 2 0 00-2-2h-8.172a2 2 0 00-1.414.586L3 12z"></path></svg>
+            <div class="p-3 bg-indigo-50/30 grid grid-cols-4 gap-2">
+                <button type="button" onclick="inputDigit('1')" class="h-12 bg-white border border-indigo-100 rounded-lg shadow-sm text-xl font-medium active:bg-indigo-100 transition-colors text-indigo-900">1</button>
+                <button type="button" onclick="inputDigit('2')" class="h-12 bg-white border border-indigo-100 rounded-lg shadow-sm text-xl font-medium active:bg-indigo-100 transition-colors text-indigo-900">2</button>
+                <button type="button" onclick="inputDigit('3')" class="h-12 bg-white border border-indigo-100 rounded-lg shadow-sm text-xl font-medium active:bg-indigo-100 transition-colors text-indigo-900">3</button>
+                <button type="button" onclick="deleteDigit()" class="h-12 bg-white border border-indigo-100 rounded-lg shadow-sm flex items-center justify-center active:bg-indigo-100 transition-colors text-indigo-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                 </button>
+                
+                <button type="button" onclick="inputDigit('4')" class="h-12 bg-white border border-indigo-100 rounded-lg shadow-sm text-xl font-medium active:bg-indigo-100 transition-colors text-indigo-900">4</button>
+                <button type="button" onclick="inputDigit('5')" class="h-12 bg-white border border-indigo-100 rounded-lg shadow-sm text-xl font-medium active:bg-indigo-100 transition-colors text-indigo-900">5</button>
+                <button type="button" onclick="inputDigit('6')" class="h-12 bg-white border border-indigo-100 rounded-lg shadow-sm text-xl font-medium active:bg-indigo-100 transition-colors text-indigo-900">6</button>
+                <button type="button" onclick="inputNow()" class="h-12 bg-white border border-indigo-100 rounded-lg shadow-sm text-[13px] font-bold active:bg-indigo-100 transition-colors text-indigo-600">NOW</button>
+                
+                <button type="button" onclick="inputDigit('7')" class="h-12 bg-white border border-indigo-100 rounded-lg shadow-sm text-xl font-medium active:bg-indigo-100 transition-colors text-indigo-900">7</button>
+                <button type="button" onclick="inputDigit('8')" class="h-12 bg-white border border-indigo-100 rounded-lg shadow-sm text-xl font-medium active:bg-indigo-100 transition-colors text-indigo-900">8</button>
+                <button type="button" onclick="inputDigit('9')" class="h-12 bg-white border border-indigo-100 rounded-lg shadow-sm text-xl font-medium active:bg-indigo-100 transition-colors text-indigo-900">9</button>
+                <button type="button" onclick="inputDigit('0')" class="h-12 bg-white border border-indigo-100 rounded-lg shadow-sm text-xl font-medium active:bg-indigo-100 transition-colors text-indigo-900">0</button>
             </div>
 
             <!-- アクション -->
-            <div class="flex gap-3">
-                <button onclick="clearNumpad()" class="px-5 py-3.5 bg-gray-100 text-gray-600 font-bold rounded-xl active:bg-gray-200 transition-colors">クリア</button>
-                <button onclick="applyNumpad()" class="flex-1 bg-orange-500 text-white font-bold rounded-xl shadow-lg shadow-orange-500/30 active:bg-orange-600 transition-colors text-lg">設定する</button>
+            <div class="flex border-t border-indigo-100 bg-white">
+                <button type="button" onclick="applyNumpad()" class="flex-1 py-4 bg-indigo-600 border-r border-indigo-700 font-bold text-white text-sm active:bg-indigo-700 transition-colors">設定</button>
+                <button type="button" onclick="clearNumpad()" class="flex-1 py-4 bg-indigo-50 border-r border-indigo-100 font-bold text-indigo-600 text-sm active:bg-indigo-100 transition-colors">クリア</button>
+                <button type="button" onclick="closeNumpad()" class="flex-1 py-4 bg-white font-bold text-gray-500 text-sm active:bg-gray-50 transition-colors">戻る</button>
             </div>
         </div>
     </div>
@@ -453,10 +473,14 @@
         // テンキーモーダル内部状態
         let numpadPrefix = '';
         let numpadMode = '';
-        let numpadValue = ''; // '0900' のような4桁文字列
+        let numpadValues = ['-', '-', '-', '-'];
+        let numpadCursor = 0;
         
         // プリセット用フィルタ状態
         let activeColorFilter = null;
+        
+        // ポップアップ用選択日
+        let popupSelectedDate = "";
 
         // ==========================================
         // 初期化処理
@@ -505,7 +529,7 @@
         }
 
         // ==========================================
-        // プレミアム制御関連 (モック)
+        // プレミアム制御関連
         // ==========================================
         function togglePremium() {
             isPremium = !isPremium;
@@ -609,13 +633,12 @@
         }
 
         // ==========================================
-        // テンキー入力 UI ロジック
+        // テンキー入力 UI ロジック (刷新版)
         // ==========================================
         function openNumpad(prefix, mode) {
             numpadPrefix = prefix;
             numpadMode = mode;
             
-            // カードの見た目更新
             const modes = ['start', 'end', 'restStart', 'restEnd'];
             modes.forEach(m => {
                 const card = document.getElementById(`${prefix}-card-${m}`);
@@ -626,7 +649,6 @@
                     } else {
                         card.classList.replace('border-orange-500', 'border-gray-200');
                         card.classList.replace('bg-orange-50/30', 'bg-white');
-                        // インディゴもリセット
                         card.classList.replace('border-indigo-500', 'border-gray-200');
                         card.classList.replace('bg-indigo-50/30', 'bg-white');
                     }
@@ -636,24 +658,24 @@
             const labels = { start: '始業', end: '就業', restStart: '休憩開始', restEnd: '休憩終了' };
             document.getElementById('numpad-title').textContent = `${labels[mode]}の入力`;
 
-            // 現在の値を読み込む (HH:MM -> HHMM)
-            const currentTime = pickerState[prefix][mode];
-            if (currentTime) {
-                numpadValue = currentTime.replace(':', '');
+            const val = pickerState[prefix][mode];
+            if (val && val.length === 5) { // "09:00" format
+                numpadValues = [val[0], val[1], val[3], val[4]];
             } else {
-                numpadValue = '';
+                numpadValues = ['-', '-', '-', '-'];
             }
+            numpadCursor = 0;
             
             updateNumpadDisplay();
             
-            // モーダルを開くアニメーション
             const modal = document.getElementById('modal-numpad');
             const panel = document.getElementById('numpad-panel');
             modal.classList.remove('hidden');
-            // 少し遅延させてopacityとtransformを適用
+            // flex を付与して display をブロック状態にしてからアニメーション
+            modal.style.display = 'flex';
             setTimeout(() => {
                 modal.classList.remove('opacity-0');
-                panel.classList.remove('translate-y-full');
+                panel.classList.remove('scale-95');
             }, 10);
         }
 
@@ -661,46 +683,72 @@
             const modal = document.getElementById('modal-numpad');
             const panel = document.getElementById('numpad-panel');
             modal.classList.add('opacity-0');
-            panel.classList.add('translate-y-full');
+            panel.classList.add('scale-95');
             
-            // アニメーション完了後にhiddenにする
             setTimeout(() => {
                 modal.classList.add('hidden');
+                modal.style.display = '';
                 
-                // カードの選択状態を解除 (バリデーションや確定処理はapplyで行う)
+                // カードの選択状態解除
                 const card = document.getElementById(`${numpadPrefix}-card-${numpadMode}`);
                 if(card) {
                     card.classList.replace('border-orange-500', 'border-gray-200');
                     card.classList.replace('bg-orange-50/30', 'bg-white');
                 }
-            }, 300);
+            }, 200);
+        }
+
+        function updateNumpadDisplay() {
+            for (let i = 0; i < 4; i++) {
+                const box = document.getElementById(`numpad-d${i}`);
+                box.textContent = numpadValues[i] === '-' ? '' : numpadValues[i];
+                
+                if (i === numpadCursor) {
+                    box.classList.add('border-orange-500', 'shadow-[0_0_8px_rgba(249,115,22,0.4)]');
+                    box.classList.remove('border-gray-200');
+                } else {
+                    box.classList.remove('border-orange-500', 'shadow-[0_0_8px_rgba(249,115,22,0.4)]');
+                    box.classList.add('border-gray-200');
+                }
+            }
+        }
+
+        function setNumpadCursor(idx) {
+            numpadCursor = idx;
+            updateNumpadDisplay();
         }
 
         function inputDigit(d) {
-            if (numpadValue.length >= 4) return;
+            let val = parseInt(d);
             
-            // 簡単な入力制限 (00:00 〜 23:59)
-            if (numpadValue.length === 0) {
-                if (parseInt(d) > 2) return; // 1桁目は0,1,2のみ
-            } else if (numpadValue.length === 1) {
-                if (numpadValue[0] === '2' && parseInt(d) > 3) return; // 24時以降不可
-            } else if (numpadValue.length === 2) {
-                if (parseInt(d) > 5) return; // 分の10の位は0-5のみ
-            }
+            // 入力ルールの適用
+            if (numpadCursor === 0 && val > 2) val = 2; // 時間の10の位は2まで
+            if (numpadCursor === 1 && numpadValues[0] === '2' && val > 3) val = 3; // 24時以降不可
+            if (numpadCursor === 2 && val > 5) val = 5; // 分の10の位は5まで
 
-            numpadValue += d;
+            numpadValues[numpadCursor] = val.toString();
+            
+            if (numpadCursor < 3) {
+                numpadCursor++;
+                // 先行入力の補正（1桁目で2を入れたら、2桁目がすでに4以上だった場合は3にする等）
+                if (numpadCursor === 1 && numpadValues[0] === '2' && numpadValues[1] !== '-' && parseInt(numpadValues[1]) > 3) {
+                    numpadValues[1] = '3';
+                }
+            }
             updateNumpadDisplay();
         }
 
         function deleteDigit() {
-            if (numpadValue.length > 0) {
-                numpadValue = numpadValue.slice(0, -1);
-                updateNumpadDisplay();
+            numpadValues[numpadCursor] = '-';
+            if (numpadCursor > 0) {
+                numpadCursor--;
             }
+            updateNumpadDisplay();
         }
 
         function clearNumpad() {
-            numpadValue = '';
+            numpadValues = ['-', '-', '-', '-'];
+            numpadCursor = 0;
             updateNumpadDisplay();
         }
 
@@ -708,39 +756,18 @@
             const now = new Date();
             const h = String(now.getHours()).padStart(2, '0');
             const m = String(now.getMinutes()).padStart(2, '0');
-            numpadValue = h + m;
+            numpadValues = [h[0], h[1], m[0], m[1]];
+            numpadCursor = 3; 
             updateNumpadDisplay();
         }
 
-        function updateNumpadDisplay() {
-            for (let i = 0; i < 4; i++) {
-                const box = document.getElementById(`numpad-d${i}`);
-                if (i < numpadValue.length) {
-                    box.textContent = numpadValue[i];
-                    box.classList.remove('active');
-                } else {
-                    box.textContent = '-';
-                    // 入力待ちの桁をハイライト
-                    if (i === numpadValue.length) {
-                        box.classList.add('active');
-                    } else {
-                        box.classList.remove('active');
-                    }
-                }
-            }
-        }
-
         function applyNumpad() {
-            if (numpadValue.length !== 4 && numpadValue.length !== 0) {
-                alert("4桁で時刻を入力してください");
+            if (numpadValues.includes('-')) {
+                alert("時刻を最後まで入力してください");
                 return;
             }
             
-            let timeStr = '';
-            if (numpadValue.length === 4) {
-                timeStr = `${numpadValue.substring(0,2)}:${numpadValue.substring(2,4)}`;
-            }
-
+            const timeStr = `${numpadValues[0]}${numpadValues[1]}:${numpadValues[2]}${numpadValues[3]}`;
             pickerState[numpadPrefix][numpadMode] = timeStr;
             updateDurationAndDisplay(numpadPrefix);
             closeNumpad();
@@ -752,11 +779,10 @@
             updateDurationAndDisplay(prefix);
         }
 
-        // 入力値に基づいて表示上の時間や「翌」ラベル、実働時間を更新
+        // 表示の更新
         function updateDurationAndDisplay(prefix) {
             const state = pickerState[prefix];
             
-            // 始業・就業
             document.getElementById(`${prefix}-disp-start`).textContent = state.start || '00:00';
             
             const endDisp = document.getElementById(`${prefix}-disp-end`);
@@ -765,7 +791,6 @@
             let sMins = s[0]*60 + s[1];
             let eMins = e[0]*60 + e[1];
             
-            // 就業が始業より小さい場合は翌日と判定
             const isNextDayEnd = eMins < sMins;
             if(isNextDayEnd) eMins += 1440;
             
@@ -775,7 +800,6 @@
                 endDisp.textContent = state.end || '00:00';
             }
 
-            // 休憩開始・終了
             const rsDisp = document.getElementById(`${prefix}-disp-restStart`);
             const reDisp = document.getElementById(`${prefix}-disp-restEnd`);
             
@@ -795,27 +819,20 @@
                 reDisp.textContent = '--:--';
             }
 
-            // 実働時間の計算 (拘束時間 - 休憩時間)
             let diff = eMins - sMins;
             if (state.restStart && state.restEnd) {
                 let rSmins = parseInt(state.restStart.split(':')[0])*60 + parseInt(state.restStart.split(':')[1]);
                 let rEmins = parseInt(state.restEnd.split(':')[0])*60 + parseInt(state.restEnd.split(':')[1]);
                 if (rSmins < sMins) rSmins += 1440;
                 if (rEmins < sMins) rEmins += 1440;
-                
-                // 休憩が始業から就業の間にある場合のみマイナスする
-                if (rEmins >= rSmins) {
-                    diff -= (rEmins - rSmins);
-                }
+                if (rEmins >= rSmins) diff -= (rEmins - rSmins);
             }
             
             const dh = Math.floor(Math.max(0, diff) / 60);
             const dm = Math.max(0, diff) % 60;
             
             const durEl = document.getElementById(`${prefix}-disp-duration`);
-            if (durEl) {
-                durEl.textContent = `実働 ${dh}時間${dm > 0 ? dm+'分' : ''}`;
-            }
+            if (durEl) durEl.textContent = `実働 ${dh}時間${dm > 0 ? dm+'分' : ''}`;
         }
 
         function toggleOptions(prefix) {
@@ -831,7 +848,7 @@
         }
 
         // ==========================================
-        // カレンダー描画（タイムライン風・日またぎ対応）
+        // カレンダー描画（日またぎ対応）
         // ==========================================
         function renderCalendar() {
             const year = currentDate.getFullYear();
@@ -899,17 +916,18 @@
                     }
                     
                     shiftHtml += `
-                    <div class="h-[22px] absolute left-0 right-0 flex items-center justify-center cursor-pointer ${rounded} ${margin} box-border transition-colors hover:brightness-95 shadow-sm"
-                         style="background-color: ${bg}; ${border} top: ${topPercent}%;"
-                         onclick="openShiftForm('${s.id}', event)">
-                        <span class="text-[9px] font-bold text-gray-800 whitespace-nowrap pointer-events-none leading-none">${text}</span>
+                    <div class="h-[22px] absolute left-0 right-0 flex items-center justify-center ${rounded} ${margin} box-border pointer-events-none shadow-sm"
+                         style="background-color: ${bg}; ${border} top: ${topPercent}%;">
+                        <span class="text-[9px] font-bold text-gray-800 whitespace-nowrap leading-none">${text}</span>
                     </div>
                     `;
                 });
 
                 const dateColor = isToday ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-700';
+                
+                // 日付セル全体をクリックしたら日次ポップアップを開くように変更
                 grid.innerHTML += `
-                    <div class="calendar-cell py-1 active:bg-gray-100 transition-colors cursor-pointer" onclick="openShiftFormForDate('${dateStr}')">
+                    <div class="calendar-cell py-1 active:bg-gray-100 transition-colors cursor-pointer" onclick="openDayPopup('${dateStr}')">
                         <div class="text-xs font-bold flex justify-center mb-0.5">
                             <div class="${dateColor} w-6 h-6 rounded-full flex items-center justify-center">${i}</div>
                         </div>
@@ -920,7 +938,69 @@
         }
 
         // ==========================================
-        // プリセット管理 & ワンタップ登録 (検索・ソート対応)
+        // 日次詳細ポップアップ (新規追加)
+        // ==========================================
+        function openDayPopup(dateStr) {
+            popupSelectedDate = dateStr;
+            const dayShifts = shifts.filter(s => 
+                s.start.startsWith(dateStr) || s.end.startsWith(dateStr) || 
+                (new Date(s.start) < new Date(dateStr) && new Date(s.end) > new Date(dateStr+"T23:59:59"))
+            );
+            
+            document.getElementById('day-popup-title').textContent = formatDateToJP(dateStr);
+            
+            let html = '';
+            if(dayShifts.length > 0) {
+                dayShifts.forEach(s => {
+                    const formatTime = t => t.split('T')[1].substring(0,5);
+                    html += `
+                    <div class="border border-gray-200 rounded-xl p-3 flex justify-between items-center bg-white shadow-sm active:bg-gray-50 transition-colors cursor-pointer" onclick="openShiftFormFromPopup('${s.id}')">
+                        <div class="flex items-center gap-3">
+                            <div class="w-2 h-8 rounded-full" style="background-color:${s.color}"></div>
+                            <div class="font-bold text-gray-800 text-sm">${formatTime(s.start)} 〜 ${formatTime(s.end)}</div>
+                        </div>
+                        <div class="text-indigo-600 text-xs font-bold px-2 py-1 bg-indigo-50 rounded">編集</div>
+                    </div>`;
+                });
+            } else {
+                html = `<div class="text-center py-6 text-gray-400 text-sm">シフトは登録されていません</div>`;
+            }
+            document.getElementById('day-popup-list').innerHTML = html;
+            
+            const modal = document.getElementById('modal-day-popup');
+            const panel = document.getElementById('day-popup-panel');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                panel.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeDayPopup() {
+            const modal = document.getElementById('modal-day-popup');
+            const panel = document.getElementById('day-popup-panel');
+            modal.classList.add('opacity-0');
+            panel.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        }
+
+        function openShiftFormFromPopup(shiftId = null) {
+            closeDayPopup();
+            // ポップアップが閉じるのを待ってからシフトフォームを開く
+            setTimeout(() => {
+                if(shiftId) {
+                    openShiftForm(shiftId);
+                } else {
+                    openShiftFormForDate(popupSelectedDate);
+                }
+            }, 200);
+        }
+
+
+        // ==========================================
+        // プリセット管理
         // ==========================================
         const getEndStrDisplay = (start, end) => {
             if (end && start && end < start) {
@@ -930,7 +1010,6 @@
         };
 
         function renderPresetsSettings() {
-            // 管理画面用リスト
             const list = document.getElementById('settings-preset-list');
             if(list) {
                 list.innerHTML = presets.map(p => `
@@ -950,7 +1029,6 @@
             const filterContainer = document.getElementById('preset-filters');
             if (!formContainer) return;
 
-            // 1. カラーフィルタ用UI生成 (重複排除)
             const colors = [...new Set(presets.map(p => p.color))];
             if (filterContainer) {
                 let fHtml = `<button type="button" onclick="setPresetFilter(null)" class="shrink-0 text-[10px] px-3 py-1.5 rounded-full font-bold border transition-colors ${activeColorFilter === null ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-200'}">すべて</button>`;
@@ -961,7 +1039,6 @@
                 filterContainer.innerHTML = fHtml;
             }
 
-            // 2. 検索とフィルタリング
             const searchVal = (document.getElementById('preset-search')?.value || '').toLowerCase();
             let filtered = presets.filter(p => {
                 const matchSearch = p.name.toLowerCase().includes(searchVal);
@@ -969,7 +1046,6 @@
                 return matchSearch && matchFilter;
             });
 
-            // 3. ソート
             const sortVal = document.getElementById('preset-sort')?.value || 'time-desc';
             filtered.sort((a, b) => {
                 if (sortVal === 'time-desc') return (b.createdAt || 0) - (a.createdAt || 0);
@@ -979,7 +1055,6 @@
                 return 0;
             });
 
-            // 4. 描画
             if (filtered.length > 0) {
                 formContainer.innerHTML = filtered.map(p => `
                     <button type="button" onclick="applyPresetToForm(${p.id})" 
@@ -1021,19 +1096,11 @@
                 document.getElementById('preset-id').value = '';
                 document.getElementById('preset-name').value = '';
                 
-                // 重複しない初期カラーをローテーション設定
                 const defaultColors = ['#ef4444', '#f97316', '#f59e0b', '#10b981', '#3b82f6', '#4f46e5', '#8b5cf6', '#ec4899'];
                 const usedColors = presets.map(p => p.color);
                 const availableColors = defaultColors.filter(c => !usedColors.includes(c));
+                let initialColor = availableColors.length > 0 ? availableColors[Math.floor(Math.random() * availableColors.length)] : defaultColors[Math.floor(Math.random() * defaultColors.length)];
                 
-                let initialColor = '#4f46e5';
-                if (availableColors.length > 0) {
-                    // まだ使われていない色からランダムに選択
-                    initialColor = availableColors[Math.floor(Math.random() * availableColors.length)];
-                } else {
-                    // 全て使われている場合は全色からランダム
-                    initialColor = defaultColors[Math.floor(Math.random() * defaultColors.length)];
-                }
                 document.getElementById('preset-color').value = initialColor;
                 
                 pickerState.preset.start = '09:00';
@@ -1045,7 +1112,6 @@
             
             updateDurationAndDisplay('preset');
             
-            // フォーカス解除用
             const modes = ['start', 'end', 'restStart', 'restEnd'];
             modes.forEach(m => {
                 const card = document.getElementById(`preset-card-${m}`);
@@ -1104,14 +1170,11 @@
             openShiftForm(null);
         }
 
-        function openShiftForm(id = null, event = null) {
-            if (event) event.stopPropagation();
+        function openShiftForm(id = null) {
             const sheet = document.getElementById('sheet-shift');
             
-            // フォームリセット
             document.getElementById('shift-form').reset();
             
-            // === 必須属性のリセット（編集時の保存エラー解消） ===
             document.getElementById('repeat-type').value = 'none';
             document.getElementById('repeat-end-container').classList.add('hidden');
             document.getElementById('repeat-end-date').removeAttribute('required');
@@ -1119,7 +1182,6 @@
             document.getElementById('shift-options-container').classList.add('hidden');
             document.getElementById('shift-opt-icon').textContent = '▶';
             
-            // 検索とフィルタをリセットして描画
             document.getElementById('preset-search').value = '';
             activeColorFilter = null;
             renderFormPresets();
@@ -1127,7 +1189,6 @@
             document.getElementById('shift-date-display').textContent = formatDateToJP(selectedBaseDate);
 
             if (id) {
-                // 編集モード
                 const s = shifts.find(x => x.id === id);
                 document.getElementById('form-title').textContent = "シフトの編集";
                 document.getElementById('shift-id').value = s.id;
@@ -1140,7 +1201,6 @@
                 pickerState.shift.restStart = s.restStart ? s.restStart.split('T')[1].substring(0,5) : '';
                 pickerState.shift.restEnd = s.restEnd ? s.restEnd.split('T')[1].substring(0,5) : '';
                 
-                // 編集時は登録されている色をセット
                 document.getElementById('shift-color').value = s.color || '#6366f1';
                 
                 document.getElementById('quick-input-section').classList.add('hidden'); 
@@ -1157,7 +1217,6 @@
                     }
                 };
             } else {
-                // 新規モード
                 document.getElementById('form-title').textContent = "シフト登録";
                 document.getElementById('shift-id').value = '';
                 
@@ -1174,7 +1233,6 @@
             
             updateDurationAndDisplay('shift');
             
-            // フォーカス解除
             const modes = ['start', 'end', 'restStart', 'restEnd'];
             modes.forEach(m => {
                 const card = document.getElementById(`shift-card-${m}`);
@@ -1213,23 +1271,19 @@
             event.target.value = '';
         }
 
-        // --- プリセットからのフォーム入力反映 (Cパターン動作) ---
         function applyPresetToForm(presetId) {
             const p = presets.find(x => x.id === presetId);
             if (!p) return;
             
-            // プリセット内容を手動入力状態にコピー
             pickerState.shift.start = p.start || '09:00';
             pickerState.shift.end = p.end || '18:00';
             pickerState.shift.restStart = p.restStart || '';
             pickerState.shift.restEnd = p.restEnd || '';
             
-            // カラーもコピー
             document.getElementById('shift-color').value = p.color || '#6366f1';
             
             updateDurationAndDisplay('shift');
 
-            // 休憩が設定されている場合はオプション枠を展開
             if (p.restStart || p.restEnd) {
                 document.getElementById('shift-options-container').classList.remove('hidden');
                 document.getElementById('shift-opt-icon').textContent = '▼';
